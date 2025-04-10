@@ -5,7 +5,7 @@ import { Screenshot } from "@/models/Screenshot";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink, Pencil, Trash, ZoomIn, X } from "lucide-react";
+import { Download, ExternalLink, Pencil, Trash, ZoomIn, X, Loader } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   AlertDialog,
@@ -28,6 +28,7 @@ interface ScreenshotGalleryProps {
 const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+  const [zoomImageLoading, setZoomImageLoading] = useState(false);
 
   if (screenshots.length === 0) {
     return (
@@ -62,6 +63,15 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
     setLoadedImages(prev => ({ ...prev, [id]: true }));
   };
 
+  const handleZoomImage = (imageUrl: string) => {
+    setZoomImageLoading(true);
+    setZoomedImage(imageUrl);
+  };
+
+  const handleZoomedImageLoad = () => {
+    setZoomImageLoading(false);
+  };
+
   return (
     <div className="w-full">
       <h2 className="text-xl font-semibold mb-4">Screenshots ({screenshots.length})</h2>
@@ -73,7 +83,7 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
           >
             <div 
               className="relative aspect-video overflow-hidden group cursor-pointer"
-              onClick={() => setZoomedImage(screenshot.fullImage)}
+              onClick={() => handleZoomImage(screenshot.fullImage)}
             >
               {!loadedImages[screenshot.id] && (
                 <div className="absolute inset-0 flex items-center justify-center bg-secondary/50">
@@ -145,7 +155,7 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
                     <Trash size={16} className="text-red-500" />
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="glass-card border-border">
+                <AlertDialogContent className="glass-card border-border fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-auto">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Screenshot</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -186,10 +196,19 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
             >
               <X className="h-5 w-5" />
             </Button>
+            
+            {/* Loading spinner while image loads */}
+            {zoomImageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <Loader className="h-10 w-10 text-highlight animate-spin" />
+              </div>
+            )}
+            
             <img 
               src={zoomedImage} 
               alt="Zoomed screenshot" 
               className="max-w-full max-h-[90vh] object-contain"
+              onLoad={handleZoomedImageLoad}
             />
           </div>
         </div>
