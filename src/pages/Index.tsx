@@ -1,16 +1,28 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import UrlInput from "@/components/UrlInput";
 import ScreenshotGallery from "@/components/ScreenshotGallery";
 import { Screenshot, captureScreenshot } from "@/models/Screenshot";
+import { loadScreenshots, saveScreenshots } from "@/utils/screenshotStorage";
 import { toast } from "sonner";
 
 const Index = () => {
   const navigate = useNavigate();
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Load screenshots from localStorage on initial render
+  useEffect(() => {
+    const storedScreenshots = loadScreenshots();
+    setScreenshots(storedScreenshots);
+  }, []);
+
+  // Update localStorage whenever screenshots change
+  useEffect(() => {
+    saveScreenshots(screenshots);
+  }, [screenshots]);
 
   const handleCaptureScreenshots = async (urls: string[]) => {
     setIsLoading(true);

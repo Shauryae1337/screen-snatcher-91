@@ -25,8 +25,18 @@ interface ScreenshotEditorProps {
 
 type DrawingTool = "pencil" | "highlighter" | "rectangle" | "circle" | "text" | "eraser";
 
+interface TextInput {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  fontSize: number;
+  isEditing: boolean;
+}
+
 const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const [activeTool, setActiveTool] = useState<DrawingTool>("pencil");
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [color, setColor] = useState("#ff3300");
@@ -34,6 +44,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [textInput, setTextInput] = useState<TextInput | null>(null);
   
   // Store the loaded image to avoid reloading
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -94,6 +105,25 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
       ctx.globalAlpha = activeTool === "highlighter" ? 0.5 : 1;
       ctx.beginPath();
       ctx.moveTo(x, y);
+    } else if (activeTool === "text") {
+      // Position the text input where the user clicked
+      setTextInput({
+        x,
+        y,
+        text: "",
+        color,
+        fontSize: strokeWidth * 5, // Scale fontSize based on strokeWidth
+        isEditing: true
+      });
+      
+      // Focus the text input on the next render
+      setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus();
+        }
+      }, 10);
+      
+      setIsDrawing(false);
     }
   };
   
@@ -121,6 +151,40 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
       ctx.arc(x, y, eraserSize, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+    } else if (activeTool === "rectangle" || activeTool === "circle") {
+      // For rectangle and circle, we'll preview them during drawing
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+      
+      if (!tempCtx) return;
+      
+      // Draw the current state from history
+      const img = new Image();
+      img.src = history[historyIndex];
+      
+      tempCtx.drawImage(img, 0, 0);
+      tempCtx.strokeStyle = color;
+      tempCtx.lineWidth = strokeWidth;
+      
+      if (activeTool === "rectangle") {
+        const width = x - startPos.x;
+        const height = y - startPos.y;
+        tempCtx.strokeRect(startPos.x, startPos.y, width, height);
+      } else if (activeTool === "circle") {
+        const radius = Math.sqrt(
+          Math.pow(x - startPos.x, 2) + 
+          Math.pow(y - startPos.y, 2)
+        );
+        tempCtx.beginPath();
+        tempCtx.arc(startPos.x, startPos.y, radius, 0, Math.PI * 2);
+        tempCtx.stroke();
+      }
+      
+      // Clear canvas and draw the preview
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(tempCanvas, 0, 0);
     }
   };
   
@@ -134,10 +198,9 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     
-    if (activeTool === "rectangle") {
-      drawRectangle(ctx);
-    } else if (activeTool === "circle") {
-      drawCircle(ctx);
+    if (activeTool === "rectangle" || activeTool === "circle") {
+      // The actual shape is already drawn on the canvas during the draw function
+      // No need to redraw it here
     }
     
     // Save to history
@@ -150,24 +213,41 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
     ctx.globalAlpha = 1;
   };
   
-  const drawRectangle = (ctx: CanvasRenderingContext2D) => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = strokeWidth;
-    const width = startPos.x - startPos.x;
-    const height = startPos.y - startPos.y;
-    ctx.strokeRect(startPos.x, startPos.y, width, height);
+  const handleTextInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (textInput) {
+      setTextInput({...textInput, text: e.target.value});
+    }
   };
   
-  const drawCircle = (ctx: CanvasRenderingContext2D) => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = strokeWidth;
-    const radius = Math.sqrt(
-      Math.pow(startPos.x - startPos.x, 2) + 
-      Math.pow(startPos.y - startPos.y, 2)
-    );
-    ctx.beginPath();
-    ctx.arc(startPos.x, startPos.y, radius, 0, Math.PI * 2);
-    ctx.stroke();
+  const handleTextInputBlur = () => {
+    if (!textInput || !textInput.text.trim()) {
+      setTextInput(null);
+      return;
+    }
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    
+    // Draw the text on the canvas
+    ctx.font = `${textInput.fontSize}px Arial`;
+    ctx.fillStyle = textInput.color;
+    ctx.fillText(textInput.text, textInput.x, textInput.y);
+    
+    // Save to history
+    const newState = canvas.toDataURL("image/png");
+    const newHistory = [...history.slice(0, historyIndex + 1), newState];
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    
+    // Clear the text input
+    setTextInput(null);
+  };
+  
+  const handleTextInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleTextInputBlur();
+    }
   };
   
   const undo = () => {
@@ -373,7 +453,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
           </div>
         </div>
         
-        <div className="border border-border rounded-lg overflow-hidden max-w-full bg-black/20">
+        <div className="border border-border rounded-lg overflow-hidden max-w-full bg-black/20 relative">
           <div className="overflow-auto">
             <canvas
               ref={canvasRef}
@@ -383,6 +463,28 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
               onMouseLeave={stopDrawing}
               className="max-w-full"
             />
+            
+            {textInput && textInput.isEditing && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${(textInput.x / canvasRef.current?.width || 1) * 100}%`,
+                  top: `${(textInput.y / canvasRef.current?.height || 1) * 100}%`,
+                  transform: 'translate(-50%, -50%)'
+                }}
+              >
+                <input
+                  ref={textInputRef}
+                  type="text"
+                  className="bg-background border border-border rounded px-2 py-1"
+                  value={textInput.text}
+                  onChange={handleTextInputChange}
+                  onBlur={handleTextInputBlur}
+                  onKeyDown={handleTextInputKeyDown}
+                  style={{ color: textInput.color }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

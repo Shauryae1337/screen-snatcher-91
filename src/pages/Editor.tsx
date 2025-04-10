@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import ScreenshotEditor from "@/components/ScreenshotEditor";
 import { Screenshot } from "@/models/Screenshot";
 import { toast } from "sonner";
+import { getScreenshotById, updateScreenshot } from "@/utils/screenshotStorage";
 
 const Editor = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,41 +14,22 @@ const Editor = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, this would fetch from an API or local storage
-    // Here we'll simulate loading and check localStorage
+    // If no ID is provided, redirect to gallery
+    if (!id) {
+      navigate("/gallery");
+      return;
+    }
+
     setIsLoading(true);
     
     // Try to get the screenshot from localStorage
-    const storedScreenshots = localStorage.getItem("screenshots");
-    if (storedScreenshots) {
-      try {
-        const parsedScreenshots: Screenshot[] = JSON.parse(storedScreenshots);
-        const foundScreenshot = parsedScreenshots.find((s) => s.id === id);
-        
-        if (foundScreenshot) {
-          setScreenshot(foundScreenshot);
-        } else {
-          toast.error("Screenshot not found");
-          navigate("/");
-        }
-      } catch (error) {
-        console.error("Error parsing stored screenshots:", error);
-        toast.error("Error loading screenshot");
-      }
+    const foundScreenshot = getScreenshotById(id);
+    
+    if (foundScreenshot) {
+      setScreenshot(foundScreenshot);
     } else {
-      // For demo purposes, create a mock screenshot if none exists
-      const mockScreenshot: Screenshot = {
-        id: id || "demo",
-        url: "https://example.com",
-        domain: "example.com",
-        title: "Example Website",
-        statusCode: 200,
-        thumbnail: "https://picsum.photos/seed/example/1280/800",
-        fullImage: "https://picsum.photos/seed/example/1280/800",
-        capturedAt: new Date(),
-      };
-      
-      setScreenshot(mockScreenshot);
+      toast.error("Screenshot not found");
+      navigate("/gallery");
     }
     
     setIsLoading(false);
@@ -64,25 +46,13 @@ const Editor = () => {
     
     setScreenshot(updatedScreenshot);
     
-    // In a real app, you would save this to the backend/localStorage
-    // For demo, let's update localStorage if it exists
-    const storedScreenshots = localStorage.getItem("screenshots");
-    if (storedScreenshots) {
-      try {
-        const parsedScreenshots: Screenshot[] = JSON.parse(storedScreenshots);
-        const updatedScreenshots = parsedScreenshots.map((s) =>
-          s.id === id ? updatedScreenshot : s
-        );
-        
-        localStorage.setItem("screenshots", JSON.stringify(updatedScreenshots));
-      } catch (error) {
-        console.error("Error updating stored screenshots:", error);
-      }
-    }
+    // Update the screenshot in storage
+    updateScreenshot(updatedScreenshot);
+    toast.success("Edit saved successfully");
   };
 
   const handleBack = () => {
-    navigate("/");
+    navigate("/gallery");
   };
 
   return (
@@ -107,10 +77,10 @@ const Editor = () => {
               The screenshot you're looking for doesn't exist or has been deleted.
             </p>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/gallery")}
               className="text-highlight hover:underline"
             >
-              Return to Home
+              Return to Gallery
             </button>
           </div>
         )}

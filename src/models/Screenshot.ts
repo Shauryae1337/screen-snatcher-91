@@ -11,42 +11,48 @@ export interface Screenshot {
   capturedAt: Date;
 }
 
-// Mock API function to simulate capturing a screenshot
+// Free screenshot API service
+const SCREENSHOT_API_BASE = "https://api.screenshotmachine.com";
+const API_KEY = "4cb94a"; // Using a free tier API key, with limited usage
+
+// Function to capture a real screenshot using Screenshot Machine API
 export const captureScreenshot = async (url: string): Promise<Screenshot> => {
-  // In a real application, this would call a backend API
-  // For demo purposes, we're simulating a delay and returning mock data
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const urlObj = new URL(url);
-      
-      // Generate a random success or error status code
-      const statusCodes = [200, 200, 200, 200, 200, 404, 500, 301, 302];
-      const statusCode = statusCodes[Math.floor(Math.random() * statusCodes.length)];
-      
-      // Generate a random title
-      const titles = [
-        `${urlObj.hostname} - Home Page`,
-        `Welcome to ${urlObj.hostname}`,
-        `${urlObj.hostname.charAt(0).toUpperCase() + urlObj.hostname.slice(1)} - Official Website`,
-        `${urlObj.hostname} - Dashboard`,
-        `${urlObj.hostname} - Not Found`,
-      ];
-      const title = titles[Math.floor(Math.random() * titles.length)];
-      
-      // For demo, use placeholder images
-      // In a real app, these would be actual screenshots
-      const placeholderImage = `https://picsum.photos/seed/${Math.random().toString(36).substring(7)}/1280/800`;
-      
-      resolve({
-        id: Math.random().toString(36).substring(2, 15),
-        url: url,
-        domain: urlObj.hostname,
-        title: title,
-        statusCode: statusCode,
-        thumbnail: placeholderImage,
-        fullImage: placeholderImage,
-        capturedAt: new Date(),
-      });
-    }, 1500 + Math.random() * 1000); // Random delay between 1.5-2.5 seconds
-  });
+  try {
+    // Format the URL if it doesn't include protocol
+    if (!url.match(/^https?:\/\//i)) {
+      url = `https://${url}`;
+    }
+    
+    // Create a URL object to extract the domain
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
+    
+    // Generate a unique ID
+    const id = Math.random().toString(36).substring(2, 15);
+    
+    // Create the screenshot URL with API parameters
+    const screenshotUrl = `${SCREENSHOT_API_BASE}?key=${API_KEY}&url=${encodeURIComponent(url)}&dimension=1280x800&format=png&cacheLimit=0&delay=2000`;
+    const thumbnailUrl = `${SCREENSHOT_API_BASE}?key=${API_KEY}&url=${encodeURIComponent(url)}&dimension=640x400&format=png&cacheLimit=0&delay=2000`;
+    
+    // Simulate a title fetch
+    const response = await fetch(url, { method: 'HEAD' }).catch(() => ({ ok: false, status: 404 }));
+    const statusCode = response.status || 200;
+    
+    // Create a best-effort title based on the domain
+    const title = `${domain.charAt(0).toUpperCase() + domain.slice(1)} - Website`;
+    
+    return {
+      id,
+      url,
+      domain,
+      title,
+      statusCode,
+      thumbnail: thumbnailUrl,
+      fullImage: screenshotUrl,
+      capturedAt: new Date(),
+    };
+  } catch (error) {
+    console.error("Error capturing screenshot:", error);
+    throw new Error("Failed to capture screenshot");
+  }
 };
