@@ -1,19 +1,8 @@
-
-export interface Screenshot {
-  id: string;
-  url: string;
-  domain: string;
-  title: string;
-  statusCode: number;
-  thumbnail: string;
-  fullImage: string;
-  editedImage?: string;
-  capturedAt: Date;
-}
+import { Screenshot } from "@/models/Screenshot";
 
 // Free screenshot API service
 const SCREENSHOT_API_BASE = "https://api.screenshotmachine.com";
-const API_KEY = "4cb94a"; // Using a free tier API key, with limited usage
+const API_KEY = "e74979"; // Updated API key as provided by the user
 
 // Function to capture a real screenshot using Screenshot Machine API
 export const captureScreenshot = async (url: string): Promise<Screenshot> => {
