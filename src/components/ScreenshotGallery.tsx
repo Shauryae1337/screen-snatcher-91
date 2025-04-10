@@ -5,7 +5,8 @@ import { Screenshot } from "@/models/Screenshot";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink, Pencil, Trash } from "lucide-react";
+import { Download, ExternalLink, Pencil, Trash, ZoomIn, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,9 @@ interface ScreenshotGalleryProps {
 }
 
 const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) => {
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+
   if (screenshots.length === 0) {
     return (
       <div className="w-full text-center p-8 glass-card animate-fade-in">
@@ -54,6 +58,10 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
     toast.success("Screenshot downloaded");
   };
 
+  const handleImageLoad = (id: string) => {
+    setLoadedImages(prev => ({ ...prev, [id]: true }));
+  };
+
   return (
     <div className="w-full">
       <h2 className="text-xl font-semibold mb-4">Screenshots ({screenshots.length})</h2>
@@ -63,13 +71,25 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
             key={screenshot.id} 
             className="glass-card overflow-hidden animate-slide-in hover:border-highlight/50 transition-all"
           >
-            <div className="relative aspect-video overflow-hidden group">
+            <div 
+              className="relative aspect-video overflow-hidden group cursor-pointer"
+              onClick={() => setZoomedImage(screenshot.fullImage)}
+            >
+              {!loadedImages[screenshot.id] && (
+                <div className="absolute inset-0 flex items-center justify-center bg-secondary/50">
+                  <div className="animate-spin h-6 w-6 border-2 border-highlight border-t-transparent rounded-full" />
+                </div>
+              )}
               <img
                 src={screenshot.thumbnail}
                 alt={screenshot.title}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${loadedImages[screenshot.id] ? 'opacity-100' : 'opacity-0'}`}
                 loading="lazy"
+                onLoad={() => handleImageLoad(screenshot.id)}
               />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <ZoomIn className="text-white h-8 w-8" />
+              </div>
               <div className="absolute bottom-2 right-2">
                 <Badge 
                   className={`${getStatusColor(screenshot.statusCode)} text-white`}
@@ -147,6 +167,33 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
           </Card>
         ))}
       </div>
+
+      {/* Image Zoom Modal */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh] overflow-auto glass-card animate-scale-in">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomedImage(null);
+              }}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <img 
+              src={zoomedImage} 
+              alt="Zoomed screenshot" 
+              className="max-w-full max-h-[90vh] object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

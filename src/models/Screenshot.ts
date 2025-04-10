@@ -14,7 +14,7 @@ export interface Screenshot {
 
 // Free screenshot API service
 const SCREENSHOT_API_BASE = "https://api.screenshotmachine.com";
-const API_KEY = "e74979"; // Updated API key as provided by the user
+const API_KEY = "e74979"; // API key as provided by the user
 
 // Function to capture a real screenshot using Screenshot Machine API
 export const captureScreenshot = async (url: string): Promise<Screenshot> => {
@@ -35,14 +35,26 @@ export const captureScreenshot = async (url: string): Promise<Screenshot> => {
     const screenshotUrl = `${SCREENSHOT_API_BASE}?key=${API_KEY}&url=${encodeURIComponent(url)}&dimension=1280x800&format=png&cacheLimit=0&delay=2000`;
     const thumbnailUrl = `${SCREENSHOT_API_BASE}?key=${API_KEY}&url=${encodeURIComponent(url)}&dimension=640x400&format=png&cacheLimit=0&delay=2000`;
     
-    // Actually fetch the status code from the URL
+    // Improved status code detection with proper error handling
     let statusCode = 200;
     try {
-      const response = await fetch(url, { method: 'HEAD' });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      
+      clearTimeout(timeoutId);
       statusCode = response.status;
     } catch (error) {
       console.error("Error fetching status code:", error);
-      statusCode = 404; // Set a default error code if fetch fails
+      // Only set 404 if it's a network error, not a timeout or CORS issue
+      if (error instanceof TypeError && error.message.includes("networkerror")) {
+        statusCode = 404;
+      }
     }
     
     // Create a best-effort title based on the domain

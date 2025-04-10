@@ -5,17 +5,43 @@ import ScreenshotGallery from "@/components/ScreenshotGallery";
 import { Screenshot } from "@/models/Screenshot";
 import { loadScreenshots, deleteScreenshot } from "@/utils/screenshotStorage";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const GallerySkeleton = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {Array(6).fill(0).map((_, i) => (
+      <div key={i} className="glass-card overflow-hidden animate-pulse">
+        <Skeleton className="w-full aspect-video bg-white/5" />
+        <div className="p-4">
+          <Skeleton className="h-6 w-3/4 mb-2 bg-white/5" />
+          <Skeleton className="h-4 w-1/2 bg-white/5" />
+        </div>
+        <div className="p-4 pt-0 flex gap-2">
+          <Skeleton className="h-9 flex-1 bg-white/5" />
+          <Skeleton className="h-9 flex-1 bg-white/5" />
+          <Skeleton className="h-9 w-9 bg-white/5 rounded-md" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const Gallery = () => {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load screenshots from storage
-    setIsLoading(true);
-    const storedScreenshots = loadScreenshots();
-    setScreenshots(storedScreenshots);
-    setIsLoading(false);
+    // Simulate network delay for better user experience with loaders
+    const loadData = async () => {
+      setIsLoading(true);
+      // Small timeout to show loading state
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const storedScreenshots = loadScreenshots();
+      setScreenshots(storedScreenshots);
+      setIsLoading(false);
+    };
+    
+    loadData();
   }, []);
 
   const handleDeleteScreenshot = (id: string) => {
@@ -32,11 +58,7 @@ const Gallery = () => {
         <div className="max-w-5xl mx-auto">
           <section>
             <h1 className="text-4xl font-bold mb-6 text-highlight">Screenshot Gallery</h1>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin h-8 w-8 border-4 border-highlight border-t-transparent rounded-full" />
-              </div>
-            ) : (
+            {isLoading ? <GallerySkeleton /> : (
               <ScreenshotGallery 
                 screenshots={screenshots}
                 onDelete={handleDeleteScreenshot}

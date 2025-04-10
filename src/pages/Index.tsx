@@ -7,16 +7,25 @@ import ScreenshotGallery from "@/components/ScreenshotGallery";
 import { Screenshot, captureScreenshot } from "@/models/Screenshot";
 import { loadScreenshots, saveScreenshots } from "@/utils/screenshotStorage";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 const Index = () => {
   const navigate = useNavigate();
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [captureProgress, setCaptureProgress] = useState(0);
 
-  // Load screenshots from localStorage on initial render
+  // Load screenshots from localStorage on initial render with a slight delay to show loading state
   useEffect(() => {
-    const storedScreenshots = loadScreenshots();
-    setScreenshots(storedScreenshots);
+    const loadData = async () => {
+      setIsInitialLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const storedScreenshots = loadScreenshots();
+      setScreenshots(storedScreenshots);
+      setIsInitialLoading(false);
+    };
+    loadData();
   }, []);
 
   // Update localStorage whenever screenshots change
@@ -26,19 +35,29 @@ const Index = () => {
 
   const handleCaptureScreenshots = async (urls: string[]) => {
     setIsLoading(true);
+    setCaptureProgress(0);
+    
     try {
       toast.info(`Capturing ${urls.length} screenshot${urls.length > 1 ? 's' : ''}...`);
       
       const capturedScreenshots: Screenshot[] = [];
+      const totalUrls = urls.length;
       
       // Process URLs sequentially to avoid overwhelming the system
-      for (const url of urls) {
+      for (let i = 0; i < totalUrls; i++) {
+        const url = urls[i];
         try {
+          // Update progress
+          setCaptureProgress(Math.round((i / totalUrls) * 100));
+          
           const screenshot = await captureScreenshot(url);
           capturedScreenshots.push(screenshot);
           
           // Notification for each successful capture
           toast.success(`Captured: ${screenshot.domain}`);
+          
+          // Update progress again after successful capture
+          setCaptureProgress(Math.round(((i + 1) / totalUrls) * 100));
         } catch (error) {
           toast.error(`Failed to capture: ${url}`);
         }
@@ -55,6 +74,9 @@ const Index = () => {
       toast.error("An error occurred while capturing screenshots");
     } finally {
       setIsLoading(false);
+      setCaptureProgress(100);
+      // Reset progress after a short delay
+      setTimeout(() => setCaptureProgress(0), 1000);
     }
   };
 
@@ -84,13 +106,26 @@ const Index = () => {
               onCapture={handleCaptureScreenshots}
               isLoading={isLoading}
             />
+            
+            {isLoading && captureProgress > 0 && (
+              <div className="mt-6 glass-card p-4 animate-fade-in">
+                <p className="text-sm text-muted-foreground mb-2">Capturing screenshots: {captureProgress}%</p>
+                <Progress value={captureProgress} className="h-2" />
+              </div>
+            )}
           </section>
           
           <section>
-            <ScreenshotGallery 
-              screenshots={screenshots}
-              onDelete={handleDeleteScreenshot}
-            />
+            {isInitialLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin h-8 w-8 border-4 border-highlight border-t-transparent rounded-full" />
+              </div>
+            ) : (
+              <ScreenshotGallery 
+                screenshots={screenshots}
+                onDelete={handleDeleteScreenshot}
+              />
+            )}
           </section>
         </div>
       </main>
