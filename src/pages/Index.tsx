@@ -64,7 +64,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-background backdrop-blur-sm">
       <Navbar />
       
       <main className="flex-1 container mx-auto pt-24 pb-12 px-4">
@@ -95,7 +95,7 @@ const Index = () => {
         </div>
       </main>
       
-      <footer className="py-6 border-t border-border">
+      <footer className="py-6 border-t border-border/30 backdrop-blur-md">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} screensht.io. All rights reserved.</p>
         </div>

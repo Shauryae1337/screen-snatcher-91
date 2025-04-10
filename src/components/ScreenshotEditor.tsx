@@ -45,14 +45,21 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [textInput, setTextInput] = useState<TextInput | null>(null);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
   
   // Store the loaded image to avoid reloading
   const imageRef = useRef<HTMLImageElement | null>(null);
   
   useEffect(() => {
+    loadImage();
+  }, [screenshot.fullImage]);
+  
+  const loadImage = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
+    
+    setIsImageLoaded(false);
     
     // Create and load the image
     const image = new Image();
@@ -60,11 +67,14 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
     image.src = screenshot.fullImage;
     
     image.onload = () => {
+      console.log("Image loaded successfully:", image.width, "x", image.height);
+      
       // Set canvas dimensions to match the image
       canvas.width = image.width;
       canvas.height = image.height;
       
-      // Draw image on canvas
+      // Clear canvas and draw image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(image, 0, 0);
       
       // Store the initial state in history
@@ -74,17 +84,19 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
       
       // Save the loaded image for later use
       imageRef.current = image;
+      setIsImageLoaded(true);
     };
     
-    image.onerror = () => {
+    image.onerror = (e) => {
+      console.error("Error loading image:", e);
       toast.error("Failed to load the image. Please try again.");
     };
-  }, [screenshot.fullImage]);
+  };
   
   // Handle drawing
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !isImageLoaded) return;
     
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -128,7 +140,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   };
   
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    if (!isDrawing || !isImageLoaded) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -153,43 +165,35 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
       ctx.restore();
     } else if (activeTool === "rectangle" || activeTool === "circle") {
       // For rectangle and circle, we'll preview them during drawing
-      const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext("2d");
-      
-      if (!tempCtx) return;
-      
-      // Draw the current state from history
+      // First, restore the previous state
       const img = new Image();
       img.src = history[historyIndex];
       
-      tempCtx.drawImage(img, 0, 0);
-      tempCtx.strokeStyle = color;
-      tempCtx.lineWidth = strokeWidth;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      // Then draw the shape
+      ctx.strokeStyle = color;
+      ctx.lineWidth = strokeWidth;
       
       if (activeTool === "rectangle") {
         const width = x - startPos.x;
         const height = y - startPos.y;
-        tempCtx.strokeRect(startPos.x, startPos.y, width, height);
+        ctx.strokeRect(startPos.x, startPos.y, width, height);
       } else if (activeTool === "circle") {
         const radius = Math.sqrt(
           Math.pow(x - startPos.x, 2) + 
           Math.pow(y - startPos.y, 2)
         );
-        tempCtx.beginPath();
-        tempCtx.arc(startPos.x, startPos.y, radius, 0, Math.PI * 2);
-        tempCtx.stroke();
+        ctx.beginPath();
+        ctx.arc(startPos.x, startPos.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
       }
-      
-      // Clear canvas and draw the preview
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(tempCanvas, 0, 0);
     }
   };
   
   const stopDrawing = () => {
-    if (!isDrawing) return;
+    if (!isDrawing || !isImageLoaded) return;
     setIsDrawing(false);
     
     const canvas = canvasRef.current;
@@ -198,16 +202,17 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     
-    if (activeTool === "rectangle" || activeTool === "circle") {
-      // The actual shape is already drawn on the canvas during the draw function
-      // No need to redraw it here
+    // Save to history if using a tool that modifies the canvas
+    if (activeTool === "pencil" || activeTool === "highlighter" || 
+        activeTool === "rectangle" || activeTool === "circle" || 
+        activeTool === "eraser") {
+      
+      // Save the current state to history
+      const newState = canvas.toDataURL("image/png");
+      const newHistory = [...history.slice(0, historyIndex + 1), newState];
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
     }
-    
-    // Save to history
-    const newState = canvas.toDataURL("image/png");
-    const newHistory = [...history.slice(0, historyIndex + 1), newState];
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
     
     // Reset opacity
     ctx.globalAlpha = 1;
@@ -220,7 +225,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   };
   
   const handleTextInputBlur = () => {
-    if (!textInput || !textInput.text.trim()) {
+    if (!textInput || !textInput.text.trim() || !isImageLoaded) {
       setTextInput(null);
       return;
     }
@@ -251,7 +256,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   };
   
   const undo = () => {
-    if (historyIndex > 0) {
+    if (historyIndex > 0 && isImageLoaded) {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!canvas || !ctx) return;
@@ -269,7 +274,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   };
   
   const redo = () => {
-    if (historyIndex < history.length - 1) {
+    if (historyIndex < history.length - 1 && isImageLoaded) {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!canvas || !ctx) return;
@@ -288,7 +293,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   
   const handleSave = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !isImageLoaded) return;
     
     const editedImage = canvas.toDataURL("image/png");
     onSave(editedImage);
@@ -297,7 +302,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
   
   const handleDownload = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !isImageLoaded) return;
     
     const editedImage = canvas.toDataURL("image/png");
     
@@ -329,7 +334,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
           variant="outline" 
           size="sm" 
           onClick={onBack}
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 backdrop-blur-sm"
         >
           <ArrowLeft size={16} />
           <span>Back to Gallery</span>
@@ -340,7 +345,8 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
             variant="outline" 
             size="sm" 
             onClick={undo}
-            disabled={historyIndex <= 0}
+            disabled={historyIndex <= 0 || !isImageLoaded}
+            className="backdrop-blur-sm"
           >
             <Undo size={16} />
           </Button>
@@ -348,7 +354,8 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
             variant="outline" 
             size="sm" 
             onClick={redo}
-            disabled={historyIndex >= history.length - 1}
+            disabled={historyIndex >= history.length - 1 || !isImageLoaded}
+            className="backdrop-blur-sm"
           >
             <Redo size={16} />
           </Button>
@@ -356,6 +363,8 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
             variant="outline" 
             size="sm" 
             onClick={handleDownload}
+            disabled={!isImageLoaded}
+            className="backdrop-blur-sm"
           >
             <Download size={16} />
           </Button>
@@ -364,6 +373,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
             size="sm"
             className="bg-highlight hover:bg-highlight/80"
             onClick={handleSave}
+            disabled={!isImageLoaded}
           >
             Save Edit
           </Button>
@@ -371,13 +381,13 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
       </div>
       
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="w-full md:w-auto dark-card p-4 flex md:flex-col gap-4 justify-between">
+        <div className="w-full md:w-auto glass-card p-4 flex md:flex-col gap-4 justify-between">
           <div className="flex md:flex-col gap-2">
             <Button
               variant={activeTool === "pencil" ? "default" : "outline"}
               size="icon"
               onClick={() => setActiveTool("pencil")}
-              className={activeTool === "pencil" ? "bg-highlight hover:bg-highlight/80" : ""}
+              className={activeTool === "pencil" ? "bg-highlight hover:bg-highlight/80" : "backdrop-blur-sm"}
             >
               <Pencil size={16} />
             </Button>
@@ -385,7 +395,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
               variant={activeTool === "highlighter" ? "default" : "outline"}
               size="icon"
               onClick={() => setActiveTool("highlighter")}
-              className={activeTool === "highlighter" ? "bg-highlight hover:bg-highlight/80" : ""}
+              className={activeTool === "highlighter" ? "bg-highlight hover:bg-highlight/80" : "backdrop-blur-sm"}
             >
               <Highlighter size={16} />
             </Button>
@@ -393,7 +403,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
               variant={activeTool === "rectangle" ? "default" : "outline"}
               size="icon"
               onClick={() => setActiveTool("rectangle")}
-              className={activeTool === "rectangle" ? "bg-highlight hover:bg-highlight/80" : ""}
+              className={activeTool === "rectangle" ? "bg-highlight hover:bg-highlight/80" : "backdrop-blur-sm"}
             >
               <Square size={16} />
             </Button>
@@ -401,7 +411,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
               variant={activeTool === "circle" ? "default" : "outline"}
               size="icon"
               onClick={() => setActiveTool("circle")}
-              className={activeTool === "circle" ? "bg-highlight hover:bg-highlight/80" : ""}
+              className={activeTool === "circle" ? "bg-highlight hover:bg-highlight/80" : "backdrop-blur-sm"}
             >
               <Circle size={16} />
             </Button>
@@ -409,7 +419,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
               variant={activeTool === "text" ? "default" : "outline"}
               size="icon"
               onClick={() => setActiveTool("text")}
-              className={activeTool === "text" ? "bg-highlight hover:bg-highlight/80" : ""}
+              className={activeTool === "text" ? "bg-highlight hover:bg-highlight/80" : "backdrop-blur-sm"}
             >
               <Type size={16} />
             </Button>
@@ -417,7 +427,7 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
               variant={activeTool === "eraser" ? "default" : "outline"}
               size="icon"
               onClick={() => setActiveTool("eraser")}
-              className={activeTool === "eraser" ? "bg-highlight hover:bg-highlight/80" : ""}
+              className={activeTool === "eraser" ? "bg-highlight hover:bg-highlight/80" : "backdrop-blur-sm"}
             >
               <Eraser size={16} />
             </Button>
@@ -453,7 +463,12 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
           </div>
         </div>
         
-        <div className="border border-border rounded-lg overflow-hidden max-w-full bg-black/20 relative">
+        <div className="glass-card rounded-lg overflow-hidden max-w-full bg-black/20 relative">
+          {!isImageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+              <div className="animate-spin h-8 w-8 border-4 border-highlight border-t-transparent rounded-full" />
+            </div>
+          )}
           <div className="overflow-auto">
             <canvas
               ref={canvasRef}
@@ -468,15 +483,15 @@ const ScreenshotEditor = ({ screenshot, onSave, onBack }: ScreenshotEditorProps)
               <div 
                 style={{
                   position: 'absolute',
-                  left: `${(textInput.x / canvasRef.current?.width || 1) * 100}%`,
-                  top: `${(textInput.y / canvasRef.current?.height || 1) * 100}%`,
+                  left: `${(textInput.x / (canvasRef.current?.width || 1)) * 100}%`,
+                  top: `${(textInput.y / (canvasRef.current?.height || 1)) * 100}%`,
                   transform: 'translate(-50%, -50%)'
                 }}
               >
                 <input
                   ref={textInputRef}
                   type="text"
-                  className="bg-background border border-border rounded px-2 py-1"
+                  className="glass-card border border-highlight rounded px-2 py-1"
                   value={textInput.text}
                   onChange={handleTextInputChange}
                   onBlur={handleTextInputBlur}

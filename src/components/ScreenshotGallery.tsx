@@ -27,7 +27,7 @@ interface ScreenshotGalleryProps {
 const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) => {
   if (screenshots.length === 0) {
     return (
-      <div className="w-full text-center p-8 dark-card animate-fade-in">
+      <div className="w-full text-center p-8 glass-card animate-fade-in">
         <h3 className="text-xl font-medium mb-2">No Screenshots Yet</h3>
         <p className="text-muted-foreground">
           Enter a URL above to capture your first screenshot
@@ -61,13 +61,14 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
         {screenshots.map((screenshot) => (
           <Card 
             key={screenshot.id} 
-            className="dark-card overflow-hidden animate-slide-in hover:border-highlight/50 transition-all"
+            className="glass-card overflow-hidden animate-slide-in hover:border-highlight/50 transition-all"
           >
             <div className="relative aspect-video overflow-hidden group">
               <img
                 src={screenshot.thumbnail}
                 alt={screenshot.title}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
               />
               <div className="absolute bottom-2 right-2">
                 <Badge 
@@ -97,7 +98,7 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="flex-1 backdrop-blur-sm"
                 onClick={() => handleDownload(screenshot)}
               >
                 <Download size={16} className="mr-1" />
@@ -124,7 +125,7 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
                     <Trash size={16} className="text-red-500" />
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="bg-secondary border-border">
+                <AlertDialogContent className="glass-card border-border">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Screenshot</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -132,7 +133,7 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="bg-secondary text-foreground">Cancel</AlertDialogCancel>
+                    <AlertDialogCancel className="bg-secondary/80 text-foreground backdrop-blur-sm">Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-red-500 hover:bg-red-600"
                       onClick={() => onDelete(screenshot.id)}

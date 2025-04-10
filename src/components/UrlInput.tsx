@@ -67,11 +67,11 @@ const UrlInput = ({ onCapture, isLoading }: UrlInputProps) => {
   };
 
   return (
-    <div className="dark-card p-6 w-full max-w-3xl animate-fade-in">
-      <h2 className="text-xl font-semibold mb-4">Capture Screenshots</h2>
+    <div className="glass-card p-6 w-full max-w-3xl mx-auto animate-fade-in">
+      <h2 className="text-xl font-semibold mb-4 text-highlight">Capture Screenshots</h2>
       
       <Tabs defaultValue="single" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary/50 backdrop-blur-md">
           <TabsTrigger value="single" className="flex items-center gap-2">
             <LinkIcon size={16} />
             <span>Single URL</span>
@@ -92,7 +92,7 @@ const UrlInput = ({ onCapture, isLoading }: UrlInputProps) => {
               placeholder="https://example.com"
               value={singleUrl}
               onChange={(e) => setSingleUrl(e.target.value)}
-              className="bg-secondary/50"
+              className="bg-secondary/50 backdrop-blur-sm"
             />
           </div>
           
@@ -102,12 +102,12 @@ const UrlInput = ({ onCapture, isLoading }: UrlInputProps) => {
             className="w-full bg-highlight hover:bg-highlight/80 text-primary-foreground"
           >
             {isLoading ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
                 <span>Capturing...</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <Camera size={16} />
                 <span>Capture Screenshot</span>
               </div>
@@ -126,7 +126,7 @@ const UrlInput = ({ onCapture, isLoading }: UrlInputProps) => {
               value={multipleUrls}
               onChange={(e) => setMultipleUrls(e.target.value)}
               rows={5}
-              className="min-h-32 bg-secondary/50"
+              className="min-h-32 bg-secondary/50 backdrop-blur-sm"
             />
           </div>
           
@@ -136,12 +136,12 @@ const UrlInput = ({ onCapture, isLoading }: UrlInputProps) => {
             className="w-full bg-highlight hover:bg-highlight/80 text-primary-foreground"
           >
             {isLoading ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
                 <span>Capturing...</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <Camera size={16} />
                 <span>Capture Screenshots</span>
               </div>

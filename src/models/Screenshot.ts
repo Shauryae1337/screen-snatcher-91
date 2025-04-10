@@ -1,4 +1,16 @@
-import { Screenshot } from "@/models/Screenshot";
+
+// Screenshot interface definition
+export interface Screenshot {
+  id: string;
+  url: string;
+  domain: string;
+  title: string;
+  statusCode: number;
+  thumbnail: string;
+  fullImage: string;
+  editedImage?: string;
+  capturedAt: Date;
+}
 
 // Free screenshot API service
 const SCREENSHOT_API_BASE = "https://api.screenshotmachine.com";
@@ -23,9 +35,15 @@ export const captureScreenshot = async (url: string): Promise<Screenshot> => {
     const screenshotUrl = `${SCREENSHOT_API_BASE}?key=${API_KEY}&url=${encodeURIComponent(url)}&dimension=1280x800&format=png&cacheLimit=0&delay=2000`;
     const thumbnailUrl = `${SCREENSHOT_API_BASE}?key=${API_KEY}&url=${encodeURIComponent(url)}&dimension=640x400&format=png&cacheLimit=0&delay=2000`;
     
-    // Simulate a title fetch
-    const response = await fetch(url, { method: 'HEAD' }).catch(() => ({ ok: false, status: 404 }));
-    const statusCode = response.status || 200;
+    // Actually fetch the status code from the URL
+    let statusCode = 200;
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      statusCode = response.status;
+    } catch (error) {
+      console.error("Error fetching status code:", error);
+      statusCode = 404; // Set a default error code if fetch fails
+    }
     
     // Create a best-effort title based on the domain
     const title = `${domain.charAt(0).toUpperCase() + domain.slice(1)} - Website`;
