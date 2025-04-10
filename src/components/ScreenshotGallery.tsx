@@ -7,17 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, ExternalLink, Pencil, Trash, ZoomIn, X, Loader } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 interface ScreenshotGalleryProps {
@@ -70,6 +59,11 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
 
   const handleZoomedImageLoad = () => {
     setZoomImageLoading(false);
+  };
+
+  const handleDeleteScreenshot = (id: string) => {
+    onDelete(id);
+    // Toast notification is now handled in the parent component
   };
 
   return (
@@ -149,30 +143,14 @@ const ScreenshotGallery = ({ screenshots, onDelete }: ScreenshotGalleryProps) =>
                 </Button>
               </Link>
               
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="icon" className="bg-transparent">
-                    <Trash size={16} className="text-red-500" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="glass-card border-border fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-auto">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Screenshot</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this screenshot? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="bg-secondary/80 text-foreground backdrop-blur-sm">Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-red-500 hover:bg-red-600"
-                      onClick={() => onDelete(screenshot.id)}
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="bg-transparent"
+                onClick={() => handleDeleteScreenshot(screenshot.id)}
+              >
+                <Trash size={16} className="text-red-500" />
+              </Button>
             </CardFooter>
           </Card>
         ))}
